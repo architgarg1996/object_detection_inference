@@ -16,6 +16,14 @@ def calculate_iou(boxA, boxB):
 
 def calculate_precision_recall_f1(pred_boxes, true_boxes, iou_threshold=0.5):
     """ Calculate Precision, Recall, and F1-Score """
+    # Special handling for cases with no predictions or no ground truths
+    if len(pred_boxes) == 0 and len(true_boxes) == 0:
+        return 1.0, 1.0, 1.0  # Perfect score, nothing was supposed to be detected and nothing was detected
+    if len(pred_boxes) == 0:
+        return 0.0, 0.0, 0.0  # No detections result in zero precision, zero recall
+    if len(true_boxes) == 0:
+        return 0.0, 0.0, 0.0  # No ground truths means any detection is a false positive
+
     TP, FP, FN = 0, 0, len(true_boxes)
 
     for pred_box in pred_boxes:
@@ -31,6 +39,8 @@ def calculate_precision_recall_f1(pred_boxes, true_boxes, iou_threshold=0.5):
     f1_score = 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0
 
     return precision, recall, f1_score
+
+
 
 def calculate_average_precision(precision, recall):
     """ Calculate the average precision (AP) for one image """
