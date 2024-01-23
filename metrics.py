@@ -27,7 +27,7 @@ def calculate_precision_recall_f1(pred_boxes, true_boxes, iou_threshold=0.5):
     TP, FP, FN = 0, 0, len(true_boxes)
 
     for pred_box in pred_boxes:
-        max_iou = max([calculate_iou(pred_box, tb) for tb in true_boxes]) if true_boxes.size > 0 else 0
+        max_iou = max([calculate_iou(pred_box, tb) for tb in true_boxes]) if len(true_boxes) > 0 else 0
         if max_iou >= iou_threshold:
             TP += 1
             FN -= 1
