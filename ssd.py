@@ -58,19 +58,19 @@ def evaluate_ssd():
                 sorted_indices = np.argsort(-scores)
                 sorted_pred_boxes = pred_boxes[sorted_indices]
 
-                precision, recall, f1_score = calculate_precision_recall_f1(sorted_pred_boxes, true_boxes)
-                total_precision += precision
-                total_recall += recall
-                total_f1 += f1_score
+                if output_directory:
+                    # Draw boxes and save annotated image
+                    annotated_image = Image.open(image_path).convert("RGB")
+                    draw_boxes_on_image(annotated_image, sorted_pred_boxes, "red", "Pred")
+                    draw_boxes_on_image(annotated_image, true_boxes, "green", "GT")
+                    annotated_image.save(os.path.join(output_directory, filename))
 
-                ious = [calculate_iou(pred_box, true_box) for pred_box in sorted_pred_boxes for true_box in true_boxes]
-                avg_iou = np.mean(ious) if ious else 0
-                total_iou += avg_iou
-
+                precision, recall, avg_iou = 0, 0, 0
+                TP, FP = 0, 0
                 precisions, recalls = [], []
                 for pred_box in sorted_pred_boxes:
-                    TP = any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
-                    FP = not TP
+                    TP += any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
+                    FP += not any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
                     precision = TP / (TP + FP) if TP + FP > 0 else 0
                     recall = TP / len(true_boxes) if true_boxes else 0
                     precisions.append(precision)
@@ -79,12 +79,13 @@ def evaluate_ssd():
                 ap = calculate_average_precision(precisions, recalls)
                 all_aps.append(ap)
 
-                if output_directory:
-                    # Draw boxes and save annotated image
-                    annotated_image = Image.open(image_path).convert("RGB")
-                    draw_boxes_on_image(annotated_image, sorted_pred_boxes, "red", "Pred")
-                    draw_boxes_on_image(annotated_image, true_boxes, "green", "GT")
-                    annotated_image.save(os.path.join(output_directory, filename))
+                total_precision += precision
+                total_recall += recall
+                total_f1 += 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+
+                ious = [calculate_iou(pred_box, true_box) for pred_box in sorted_pred_boxes for true_box in true_boxes]
+                avg_iou = np.mean(ious) if ious else 0
+                total_iou += avg_iou
 
                 total_inference_time += end_time - start_time
                 num_images += 1
