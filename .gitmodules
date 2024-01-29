@@ -1,3 +1,6 @@
 [submodule "yolov5"]
 	path = yolov5
 	url = https://github.com/ultralytics/yolov5.git
+[submodule "yolov8_inference"]
+	path = yolov8_inference
+	url = https://github.com/ultralytics/ultralytics.git
