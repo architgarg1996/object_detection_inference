@@ -7,7 +7,7 @@ import numpy as np
 from torchvision.transforms import functional as F
 
 # Import your custom metric calculation functions and label parsing
-from metrics import calculate_precision_recall_f1, calculate_iou
+from metrics import *
 from parse_groundtruth import parse_labels
 from annotate_boxes import *
 from config import  image_directory, label_path, output_directory
@@ -33,6 +33,7 @@ def eval_yolov8():
     model = load_model()
     ground_truths = parse_labels(label_path)
     total_precision, total_recall, total_f1, total_iou, total_inference_time, num_images = 0, 0, 0, 0, 0, 0
+    all_aps = []
 
     if output_directory:
         os.makedirs(output_directory, exist_ok=True)
@@ -61,25 +62,42 @@ def eval_yolov8():
                 
                 # print("Category ID Index[0]: ",category_id[0])
                 if int(category_id[0]) == ball_class_index:
-                    print("ball_class_index:",ball_class_index)
-                    print("Category ID: ",category_id)
-                    print(type(category_id))
-                    print("Length of Category ID: ",len(category_id))
-                    print("Category ID Index[0]: ",category_id[0])
-                    print("Bbox: ",bbox)
-
                     if isinstance(bbox, (list, tuple, np.ndarray)) and len(bbox[0]) == 4:
                         pred_boxes.append([coord.item() if hasattr(coord, 'item') else coord for coord in bbox[0]])
                     else:
                         print("Unexpected bbox format:", bbox)
 
             true_boxes = ground_truths[filename]
-            print("True Boxes: ",true_boxes)
-            precision, recall, f1_score = calculate_precision_recall_f1(pred_boxes, true_boxes)
-            total_precision += precision
-            total_recall += recall
-            total_f1 += (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0
-            total_iou += np.mean([calculate_iou(torch.tensor(pred_box), torch.tensor(true_box)) for pred_box in pred_boxes for true_box in true_boxes]) if pred_boxes else 0
+
+            if pred_boxes:
+                precision, recall, f1_score = calculate_precision_recall_f1(pred_boxes, true_boxes)
+                ious = [calculate_iou(pred_box, true_box) for pred_box in pred_boxes for true_box in true_boxes]
+                avg_iou = np.mean(ious) if ious else 0
+            else:
+                precision, recall, f1_score, avg_iou = 0, 0, 0, 0
+
+                total_precision += precision
+                total_recall += recall
+                total_f1 += (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0
+
+            TP, FP = 0, 0
+            precisions, recalls = [], []  
+            for pred_box in pred_boxes:
+                TP += any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
+                FP += not any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
+                precision = TP / (TP + FP) if TP + FP > 0 else 0
+                recall = TP / len(true_boxes) if true_boxes else 0
+                precisions.append(precision)
+                recalls.append(recall)
+
+            ap = calculate_average_precision(precisions, recalls)
+            all_aps.append(ap)
+
+            # total_iou += np.mean([calculate_iou(torch.tensor(pred_box), torch.tensor(true_box)) for pred_box in pred_boxes for true_box in true_boxes]) if pred_boxes else 0
+            ious = [calculate_iou(pred_box, true_box) for pred_box in pred_boxes for true_box in true_boxes]
+            avg_iou = np.mean(ious) if ious else 0
+            total_iou += avg_iou
+
             total_inference_time += end_time - start_time
             num_images += 1
 
@@ -93,10 +111,11 @@ def eval_yolov8():
     avg_recall = total_recall / num_images if num_images > 0 else 0
     avg_f1 = total_f1 / num_images if num_images > 0 else 0
     avg_iou = total_iou / num_images if num_images > 0 else 0
+    mAP = np.mean(all_aps) if all_aps else 0
     avg_inference_time = total_inference_time / num_images if num_images > 0 else 0
 
-    return avg_precision, avg_recall, avg_f1, avg_iou, avg_inference_time
+    return avg_precision, avg_recall, avg_f1, avg_iou,mAP, avg_inference_time
 
 # Example usage
-metrics = eval_yolov8()
-print("Precision:", metrics[0], "Recall:", metrics[1], "F1-score:", metrics[2], "IoU:", metrics[3], "Average Inference Time:", metrics[4], "sec")
+# metrics = eval_yolov8()
+# print("Precision:", metrics[0], "Recall:", metrics[1], "F1-score:", metrics[2], "IoU:", metrics[3], "Average Inference Time:", metrics[4], "sec")

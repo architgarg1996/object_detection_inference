@@ -68,6 +68,10 @@ def eval_yolov5():
                 else:
                     precision, recall, f1_score, avg_iou = 0, 0, 0, 0
 
+                total_precision += precision
+                total_recall += recall
+                total_f1 += 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+                
                 if output_directory:
                     annotated_image = pil_image.copy()
                     draw_boxes_on_image(annotated_image, pred_boxes, "red", "Pred")
@@ -88,9 +92,7 @@ def eval_yolov5():
                 ap = calculate_average_precision(precisions, recalls)
                 all_aps.append(ap)
 
-                total_precision += precision
-                total_recall += recall
-                total_f1 += 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+                
 
                 ious = [calculate_iou(pred_box, true_box) for pred_box in pred_boxes for true_box in true_boxes]
                 avg_iou = np.mean(ious) if ious else 0
