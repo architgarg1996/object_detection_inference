@@ -1,6 +1,6 @@
 from faster_rcnn import eval_faster_rcnn
 from yolo_v5 import eval_yolov5
-# from yolo_v7 import eval_yolov7
+from yolo_v8 import eval_yolov8
 from ssd import evaluate_ssd
 from config import model_name
 
@@ -20,7 +20,7 @@ elif model_name in ('yolov5s','yolov5m','yolov5l','yolov5x'):
     metrics = eval_yolov5()
 elif model_name == 'ssd':
     metrics = evaluate_ssd()
-# elif model_name == 'yolov7':
-#     metrics = eval_yolov7()
+elif model_name == 'yolov8':
+    metrics = eval_yolov8()
 
 display_results(metrics)
