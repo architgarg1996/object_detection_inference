@@ -12,7 +12,7 @@ from parse_groundtruth import parse_labels
 from annotate_boxes import *
 from config import  image_directory, label_path, output_directory
 
-ball_class_index = 32
+ball_class_index = 32.0
 def eval_yolov8():
 
     def load_model():
@@ -45,30 +45,17 @@ def eval_yolov8():
             image = image.to('cuda' if torch.cuda.is_available() else 'cpu')
 
             start_time = time.time()
-            results = model.predict(image, imgsz=1280)
-            end_time = time.time()
-
-            start_time = time.time()
-            results_1 = model.predict(image, imgsz=1280)
+            results = model.predict(image)
             end_time = time.time()
 
             pred_boxes = []
-            for prediction in results[0].boxes.cpu().numpy():
-                bbox, category_id, score = (
-                    prediction.xyxy,
-                    prediction.cls,
-                    prediction.conf,
-                )
-                
-                # print("Category ID Index[0]: ",category_id[0])
-                if int(category_id[0]) == ball_class_index:
-                    if isinstance(bbox, (list, tuple, np.ndarray)) and len(bbox[0]) == 4:
-                        pred_boxes.append([coord.item() if hasattr(coord, 'item') else coord for coord in bbox[0]])
-                    else:
-                        print("Unexpected bbox format:", bbox)
+            for result in results:
+                for box in result.boxes:
+                    if box.cls == ball_class_index:
+                        bbox = box.xyxy.cpu().numpy()
+                        pred_boxes.append([bbox[0][0], bbox[0][1], bbox[0][2], bbox[0][3]])
 
             true_boxes = ground_truths[filename]
-
             if pred_boxes:
                 precision, recall, f1_score = calculate_precision_recall_f1(pred_boxes, true_boxes)
                 ious = [calculate_iou(pred_box, true_box) for pred_box in pred_boxes for true_box in true_boxes]
