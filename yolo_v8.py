@@ -26,9 +26,29 @@ def eval_yolov8():
     
     def process_image(image_path, img_size=640):
         image = Image.open(image_path).convert("RGB")
+        original_size = image.size
         image = F.to_tensor(image)
         image = F.resize(image, [img_size, img_size])
-        return image.unsqueeze(0)  # Add batch dimension
+        return image.unsqueeze(0), original_size  # Add batch dimension
+    
+    def resize_bbox(bbox,original_size,resized_size):
+
+        original_width, original_height = original_size
+        resized_width, resized_height = resized_size
+
+        # Calculate scaling factors
+        x_scale = original_width / resized_width
+        y_scale = original_height / resized_height
+
+        # Resize boxes
+        x_min, y_min, x_max, y_max = bbox
+        x_min_resized = x_min * x_scale
+        y_min_resized = y_min * y_scale
+        x_max_resized = x_max * x_scale
+        y_max_resized = y_max * y_scale
+
+        return x_min_resized,y_min_resized,x_max_resized,y_max_resized
+
 
     model = load_model()
     ground_truths = parse_labels(label_path)
@@ -41,7 +61,7 @@ def eval_yolov8():
     for filename in os.listdir(image_directory):
         if filename.endswith((".png", ".jpg", ".jpeg")) and filename in ground_truths:
             image_path = os.path.join(image_directory, filename)
-            image = process_image(image_path)
+            image, original_size = process_image(image_path)
             image = image.to('cuda' if torch.cuda.is_available() else 'cpu')
 
             start_time = time.time()
@@ -53,7 +73,9 @@ def eval_yolov8():
                 for box in result.boxes:
                     if box.cls == ball_class_index:
                         bbox = box.xyxy.cpu().numpy()
-                        pred_boxes.append([bbox[0][0], bbox[0][1], bbox[0][2], bbox[0][3]])
+                        bbox_resized = resize_bbox([bbox[0][0], bbox[0][1], bbox[0][2], bbox[0][3]],
+                                                   original_size,[640,640])
+                        pred_boxes.append(bbox_resized)
 
             true_boxes = ground_truths[filename]
             if pred_boxes:
@@ -63,9 +85,9 @@ def eval_yolov8():
             else:
                 precision, recall, f1_score, avg_iou = 0, 0, 0, 0
 
-                total_precision += precision
-                total_recall += recall
-                total_f1 += (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0
+            total_precision += precision
+            total_recall += recall
+            total_f1 += (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0
 
             TP, FP = 0, 0
             precisions, recalls = [], []  
