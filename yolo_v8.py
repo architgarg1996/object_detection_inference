@@ -10,7 +10,7 @@ from torchvision.transforms import functional as F
 from metrics import *
 from parse_groundtruth import parse_labels
 from annotate_boxes import *
-from config import  image_directory, label_path, output_directory
+from config import  image_directory, label_path, output_directory, model_name
 
 ball_class_index = 32.0
 def eval_yolov8():
@@ -18,7 +18,10 @@ def eval_yolov8():
     def load_model():
         
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = YOLO("yolov8n.pt")
+        model_sizes = {'yolov8n': 'yolov8n.pt', 'yolov8s': 'yolov8s.pt', 'yolov8m': 'yolov8m.pt', 'yolov8l': 'yolov8l.pt',
+                       'yolov8x': 'yolov8x.pt'}
+        weights_path = model_sizes.get(model_name, 'yolov8s.pt')
+        model = YOLO(weights_path)
         model.to(device).eval()
         # model = torch.hub.load('ultralytics/yolov5', "yolov8n")
         print("Model loading succesful")
