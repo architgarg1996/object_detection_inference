@@ -7,3 +7,6 @@
 [submodule "yolov7_inference"]
 	path = yolov7_inference
 	url = https://github.com/WongKinYiu/yolov7.git
+[submodule "yolov7"]
+	path = yolov7
+	url = https://github.com/WongKinYiu/yolov7.git
