@@ -34,6 +34,10 @@ def eval_faster_rcnn():
         if output_directory:
             create_dir_if_not_exists(output_directory)
 
+        total_tp, total_fp, total_fn = 0, 0, 0
+        all_ious = []
+        inference_time = []
+        
         for filename in os.listdir(directory):
             if filename.endswith((".png", ".jpg", ".jpeg")) and filename in ground_truths:
                 image_path = os.path.join(directory, filename)
@@ -68,34 +72,39 @@ def eval_faster_rcnn():
                     draw_boxes_on_image(annotated_image, ground_truths[filename], "green", "GT")
                     annotated_image.save(os.path.join(output_directory, filename))
 
-                TP, FP = 0, 0
-                precisions, recalls = [], []
-                for pred_box in sorted_pred_boxes:
-                    TP += any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
-                    FP += not any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
-                    precision = TP / (TP + FP) if TP + FP > 0 else 0
-                    recall = TP / len(true_boxes) if true_boxes else 0
-                    precisions.append(precision)
-                    recalls.append(recall)
-
+                # TP, FP, FN = 0, 0, len(true_boxes)
+                # precisions, recalls = [], []
+                # for pred_box in sorted_pred_boxes:
+                #     TP += any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
+                #     FP += not any(calculate_iou(pred_box, tb) >= 0.5 for tb in true_boxes)
+                #     precision = TP / (TP + FP) if TP + FP > 0 else 0
+                #     recall = TP / len(true_boxes) if true_boxes else 0
+                #     precisions.append(precision)
+                #     recalls.append(recall)
+                    
+                precisions, recalls, tp, fp, fn = calculate_precision_recall_f1(sorted_pred_boxes, true_boxes)
+                total_tp += tp
+                total_fp += fp
+                total_fn += fn
                 ap = calculate_average_precision(precisions, recalls)
                 all_aps.append(ap)
 
-                total_precision += precision
-                total_recall += recall
-                total_f1 += 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+                # total_precision += precision
+                # total_recall += recall
+                # total_f1 += 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
 
                 ious = [calculate_iou(pred_box, true_box) for pred_box in sorted_pred_boxes for true_box in true_boxes]
-                avg_iou = np.mean(ious) if ious else 0
-                total_iou += avg_iou
+                all_ious.extend(ious)
+                # avg_iou = np.mean(ious) if ious else 0
+                # total_iou += avg_iou
 
                 total_inference_time += end_time - start_time
                 num_images += 1
 
-        avg_precision = total_precision / num_images if num_images > 0 else 0
-        avg_recall = total_recall / num_images if num_images > 0 else 0
-        avg_f1 = total_f1 / num_images if num_images > 0 else 0
-        avg_iou = total_iou / num_images if num_images > 0 else 0
+        avg_precision = total_tp / (total_tp + total_fp) if total_tp + total_fp > 0 else 0
+        avg_recall = total_tp / (total_tp + total_fn) if total_tp + total_fn > 0 else 0
+        avg_f1 = 2 * (avg_precision * avg_recall) / (avg_precision + avg_recall) if precision + recall > 0 else 0
+        avg_iou = np.mean(all_ious) if all_ious else 0
         mAP = np.mean(all_aps) if all_aps else 0
         avg_inference_time = total_inference_time / num_images if num_images > 0 else 0
 
