@@ -103,7 +103,7 @@ def eval_faster_rcnn():
 
         avg_precision = total_tp / (total_tp + total_fp) if total_tp + total_fp > 0 else 0
         avg_recall = total_tp / (total_tp + total_fn) if total_tp + total_fn > 0 else 0
-        avg_f1 = 2 * (avg_precision * avg_recall) / (avg_precision + avg_recall) if precision + recall > 0 else 0
+        avg_f1 = 2 * (avg_precision * avg_recall) / (avg_precision + avg_recall) if avg_precision + avg_recall > 0 else 0
         avg_iou = np.mean(all_ious) if all_ious else 0
         mAP = np.mean(all_aps) if all_aps else 0
         avg_inference_time = total_inference_time / num_images if num_images > 0 else 0
